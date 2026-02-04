@@ -1,0 +1,36 @@
+Título (galego):
+Mellora do comportamento a baixo nivel da patada dun robot cuadrúpedo
+Título (castellano):
+Mejora del comportamiento a bajo nivel del pateo de un robot cuadrúpedo
+Título (English):
+Improved low-level kicking behavior of a quadriped robot
+Tipo de traballo:
+Desenvolvemento en investigación
+Ofertase para:
+Grao en Enxeñería Informática: Computación
+Grao en Enxeñería Informática: Tecnoloxías da Información
+Grao en Enxeñería Informática: Enxeñaría do Software
+Grao en Enxeñería Informática: Sistemas de Información
+Grao en Enxeñería Informática: Enxeñaría de Computadores
+Número de estudantes para quen se oferta:
+Grao en Enxeñería Informática: 1
+Dirección a cargo de:
+Carlos Vázquez Regueiro
+______________________________________________________________________
+Descripción:
+Este TFG es continuación de otro recientemente defendido que consistía en hacer que un 
+robot cuadrúpedo Go2 detectase una pelota de un determinado (objeto de pateo) y un 
+destino (una pelota de otro color o una botella), se acercase a ella y chutase. El objetivo 
+del presente proyecto consistirá en intentar mejorar los comportamientos de bajo nivel 
+empleados. Actualmente, la acción final de chutar (levantar una pata para impulsar la 
+pelota) no depende de la posición relativa entre la posición relativa de la pelota respecto a
+la pata. En primer lugar, se analizará la secuencia de órdenes a bajo nivel que mueven la 
+pata que chuta. A continuación, se estudiará cómo alterar dicha secuencia para conseguir
+dos objetivos: primero, modificar el plano en el que se mueve la pata, segundo, modificar 
+el ángulo de flexión de la pata para poder seleccionar (hasta cierto punto) el punto de 
+impacto de la pata sobre la pelota. El propósito de estas modificaciones es poder 
+seleccionar la dirección del chute, es decir, en qué dirección saldrá la pelota que se 
+empuja. El trabajo se centrará principalmente en simulación, por la complejidad y 
+peligrosidad (para la integridad del propio robot) de los movimientos a realizar. Si todo 
+sale bien, se estudiará ejecutar el comportamiento final de chutar en un robot real.
+
