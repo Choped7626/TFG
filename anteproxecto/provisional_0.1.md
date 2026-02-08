@@ -44,12 +44,12 @@ Este proyecto nos presenta un reto técnico centrado en el control a bajo nivel 
 
 [revisar/modificar]
 
- 	1. Creación de un entorno de simulación en Docker con Ubuntu, ROS2 y Gazebo.
- 	2. Implementar funciones a bajo nivel que permitan realizar el pateo de una pelota de forma precisa y el cálculo de la trayectoria de la misma evitando la caída del robot.
- 	3. Usar el entorno simulado para comprobar el correcto funcionamiento del pateo y verificar los cálculos computados.
- 	4. Validar el comportamiento desarrollado en el robot real, comprobando que los pateos son efectivos, el robot mantiene el equilibrio y la pelota sigue la trayectoria planeada según el punto de impacto.
- 	5. Implementar funciones a bajo nivel que permitan realizar desplazamientos del robot precisos y en distancias cortas sin comprometer su integridad, realizando pruebas en el simulador y posteriormente en el robot real. 
- 	6. Comprobar el correcto comportamiento completo en el robot real, pudiendo precisar el punto de impacto del pateo según convenga y empleando los movimientos precisos empleados para una correcta alineación.
+1. Creación de un entorno de simulación en Docker con Ubuntu, ROS2 y Gazebo.
+2. Implementar funciones a bajo nivel que permitan realizar el pateo de una pelota de forma precisa y el cálculo de la trayectoria de la misma evitando la caída del robot.
+3. Usar el entorno simulado para comprobar el correcto funcionamiento del pateo y verificar los cálculos computados.
+4. Validar el comportamiento desarrollado en el robot real, comprobando que los pateos son efectivos, el robot mantiene el equilibrio y la pelota sigue la trayectoria planeada según el punto de impacto.
+5. Implementar funciones a bajo nivel que permitan realizar desplazamientos del robot precisos y en distancias cortas sin comprometer su integridad, realizando pruebas en el simulador y posteriormente en el robot real. 
+6. Comprobar el correcto comportamiento completo en el robot real, pudiendo precisar el punto de impacto del pateo según convenga y empleando los movimientos precisos empleados para una correcta alineación.
 
 # Método de traballo
 
