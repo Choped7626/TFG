@@ -1,0 +1,10 @@
+string class_name
+int64 top
+int64 left
+int64 bottom
+int64 right
+float32 confidence
+int32 h
+int32 s
+int32 v
+geometry_msgs/Pose pose
