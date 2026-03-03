@@ -64,13 +64,9 @@ RUN pip3 install --no-cache-dir \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-# 5. Configura el editor usado
-COPY config.sh /tmp/config.sh
-RUN bash -c /tmp/config.sh
-
-# 6. Workspace de trabajo
+# 5. Workspace de trabajo
 WORKDIR /ros2_ws
 
-# 7. Comando por defecto
+# 6. Comando por defecto
 CMD ["bash", "-c", "source /opt/ros/humble/setup.bash && cd /ros2_ws && exec bash"]
 
