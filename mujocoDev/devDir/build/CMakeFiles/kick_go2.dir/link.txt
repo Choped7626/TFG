@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/kick_go2.dir/kick_go2.cpp.o -o kick_go2   -L/opt/unitree_robotics/lib  -Wl,-rpath,/opt/unitree_robotics/lib /opt/unitree_robotics/lib/libunitree_sdk2.a -lddsc -lddscxx 

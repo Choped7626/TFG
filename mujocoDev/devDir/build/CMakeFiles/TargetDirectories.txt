@@ -1,3 +1,0 @@
-/ros2_ws/devDir/build/CMakeFiles/kick_go2.dir
-/ros2_ws/devDir/build/CMakeFiles/edit_cache.dir
-/ros2_ws/devDir/build/CMakeFiles/rebuild_cache.dir
