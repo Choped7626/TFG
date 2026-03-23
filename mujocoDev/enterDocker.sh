@@ -11,7 +11,7 @@ else
     --env="DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    --volume="./devDir:/ros2_ws/devDir" \
+    --volume="./devDir/:/ros2_ws/devDir" \
     $(for dev in /dev/video*; do echo "--device=$dev"; done) \
     --device=/dev/bus/usb/001/003 \
     --privileged \
