@@ -9,6 +9,8 @@ ENV YOLO_CONFIG_DIR=/tmp
 #ENV CYCLONEDDS_URI=/ros2_ws/cyclonedds.xml
 #ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
+SHELL ["/bin/bash", "-c"]
+
 # 1. Actualizar repositorios e instalar herramientas básicas
 RUN apt update && apt install -y \
     git \
@@ -63,6 +65,10 @@ RUN apt update && apt install -y \
 
 RUN pip3 install --no-cache-dir mujoco pygame
 
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
+    pip3 install -e /tmp/unitree_sdk2_python && \
+    rm -rf /tmp/unitree_sdk2_python
+
 # 3. Instalar unitree_sdk2
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_sdk2 && \
     cd /tmp/unitree_sdk2 && \
@@ -70,6 +76,16 @@ RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_s
     cmake .. -DCMAKE_INSTALL_PREFIX=/opt/unitree_robotics && \
     make install && \
     rm -rf /tmp/unitree_sdk2
+
+RUN source /opt/ros/humble/setup.bash && \
+    git clone https://github.com/unitreerobotics/unitree_ros2.git /root/unitree_ros2 && \
+    cd /root/unitree_ros2/cyclonedds_ws && \
+    colcon build
+
+# Reemplazar foxy por humble en los scripts de setup de unitree_ros2
+RUN sed -i 's/opt\/ros\/foxy/opt\/ros\/humble/g' /root/unitree_ros2/setup.sh \
+    /root/unitree_ros2/setup_local.sh \
+    /root/unitree_ros2/setup_default.sh
 
 # 4. Descargar e instalar MuJoCo
 ARG MUJOCO_VERSION=3.3.6
@@ -87,6 +103,14 @@ RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/uni
     mkdir build && cd build && \
     cmake .. && make -j4
 
+RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc && \
+    echo 'source /root/unitree_ros2/cyclonedds_ws/install/setup.bash' >> /root/.bashrc
+
+COPY scripts/ /usr/local/bin/
+RUN chmod +x /usr/local/bin/build.sh \
+              /usr/local/bin/run.sh \
+              /usr/local/bin/sim.sh
+
 # 6. Instalar paquetes Python globales
 #RUN pip3 install --no-cache-dir \
 #    ultralytics \
@@ -100,4 +124,4 @@ RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/uni
 WORKDIR /ros2_ws
 
 # 9. Comando por defecto
-CMD ["bash", "-c", "source /opt/ros/humble/setup.bash && cd /ros2_ws && exec bash"]
+CMD ["bash"]
