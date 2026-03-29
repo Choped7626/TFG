@@ -3,7 +3,7 @@
 xhost +local:docker >/dev/null
 
 if sudo docker ps -a | grep -q TFG; then
-  sudo docker exec -it TFG /bin/bash -c "source /opt/ros/humble/setup.bash && cd /ros2_ws && exec bash"
+  sudo docker exec -it TFG /bin/bash
 else
   sudo docker run -it --rm \
     --name TFG \
