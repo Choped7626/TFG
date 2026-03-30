@@ -15,7 +15,9 @@ SHELL ["/bin/bash", "-c"]
 RUN apt update && apt install -y \
     git \
     python3-pip \
+    tree \
     clang \
+    clangd \
     portaudio19-dev \
     python3-colcon-common-extensions \
     libcanberra-gtk-module \
@@ -110,6 +112,7 @@ RUN mkdir -p /root/.mujoco && \
     rm /tmp/mujoco.tar.gz
 
 # 5. Compilar unitree_mujoco (simulate)
+ARG MUJOCO_VERSION=3.3.6
 RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/unitree_mujoco && \
     cd /ros2_ws/unitree_mujoco && \
  #   git checkout 1a37b051a10be723405b7ed6dc839361af036d88 && \
@@ -128,6 +131,17 @@ COPY scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/build.sh \
               /usr/local/bin/run.sh \
               /usr/local/bin/sim.sh
+
+RUN curl -LO https://github.com/neovim/neovim/releases/download/v0.11.7/nvim-linux-x86_64.tar.gz && \
+    tar -xzf nvim-linux-x86_64.tar.gz -C /opt/ && \
+    ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim && \
+    rm nvim-linux-x86_64.tar.gz
+
+RUN git clone https://github.com/erickkramer/nvim-ros2.git /ros2_ws/nvim-ros2
+
+COPY config/nvim/ /root/.config/nvim/
+
+RUN nvim --headless "+Lazy! sync" +qa || true
 
 # 8. Workspace de trabajo
 WORKDIR /ros2_ws
