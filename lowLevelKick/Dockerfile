@@ -28,7 +28,6 @@ RUN apt update && apt install -y \
     gnupg2 \
     bc \
     lsb-release \
-    # Dependencias del simulador Unitree/MuJoCo
     libyaml-cpp-dev \
     libspdlog-dev \
     libboost-all-dev \
@@ -54,24 +53,37 @@ RUN apt update && apt install -y \
     ros-humble-nav2-bringup \
     ros-humble-slam-toolbox \
     ros-humble-pointcloud-to-laserscan \
-    #ros-humble-foxglove-bridge \
+    ros-humble-foxglove-bridge \
     ros-humble-usb-cam \
     ros-humble-librealsense2* \
     ros-humble-realsense2-* \
     ros-humble-image-view \
     && rm -rf /var/lib/apt/lists/*
 
-#RUN apt update && apt upgrade -y
+RUN apt update && apt upgrade -y
 
-RUN pip3 install --no-cache-dir mujoco pygame
+# 6. Instalar paquetes Python globales
+RUN pip3 install --no-cache-dir \
+    ultralytics \
+    numpy==1.24.4 \
+    mujoco \
+    pygame 
+
+# 7. Instalar requerimientos Python del proyecto
+COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+
 
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
-    pip3 install -e /tmp/unitree_sdk2_python && \
-    rm -rf /tmp/unitree_sdk2_python
+    cd /tmp/unitree_sdk2_python && \
+#    git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
+    pip3 install . && \
+    cd / && rm -rf /tmp/unitree_sdk2_python
 
 # 3. Instalar unitree_sdk2
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_sdk2 && \
     cd /tmp/unitree_sdk2 && \
+#    git checkout 811bc77cdcffb4691d4b40172f9a57857bf6cffb && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/opt/unitree_robotics && \
     make install && \
@@ -79,8 +91,10 @@ RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_s
 
 RUN source /opt/ros/humble/setup.bash && \
     git clone https://github.com/unitreerobotics/unitree_ros2.git /root/unitree_ros2 && \
-    cd /root/unitree_ros2/cyclonedds_ws && \
-    colcon build
+    cd /root/unitree_ros2 && \
+#    git checkout 66ae09858245ac3d2231c0cc209e36a88f8d7d03 && \
+#    git submodule update --init --recursive && \
+    cd cyclonedds_ws && colcon build
 
 # Reemplazar foxy por humble en los scripts de setup de unitree_ros2
 RUN sed -i 's/opt\/ros\/foxy/opt\/ros\/humble/g' /root/unitree_ros2/setup.sh \
@@ -96,12 +110,16 @@ RUN mkdir -p /root/.mujoco && \
     rm /tmp/mujoco.tar.gz
 
 # 5. Compilar unitree_mujoco (simulate)
-ARG MUJOCO_VERSION=3.3.6
 RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/unitree_mujoco && \
-    cd /ros2_ws/unitree_mujoco/simulate && \
+    cd /ros2_ws/unitree_mujoco && \
+ #   git checkout 1a37b051a10be723405b7ed6dc839361af036d88 && \
+    cd simulate && \
     ln -s /root/.mujoco/mujoco-${MUJOCO_VERSION} mujoco && \
     mkdir build && cd build && \
     cmake .. && make -j4
+
+# soluciona problema de script?
+ENV LD_LIBRARY_PATH=/root/.mujoco/lib:$LD_LIBRARY_PATH
 
 RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc && \
     echo 'source /root/unitree_ros2/cyclonedds_ws/install/setup.bash' >> /root/.bashrc
@@ -110,15 +128,6 @@ COPY scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/build.sh \
               /usr/local/bin/run.sh \
               /usr/local/bin/sim.sh
-
-# 6. Instalar paquetes Python globales
-#RUN pip3 install --no-cache-dir \
-#    ultralytics \
-#    numpy==1.24.4
-
-# 7. Instalar requerimientos Python del proyecto
-#COPY requirements.txt /tmp/requirements.txt
-#RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # 8. Workspace de trabajo
 WORKDIR /ros2_ws
