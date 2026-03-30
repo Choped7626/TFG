@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>stand_go2</name>
+  <name>low_kick</name>
   <version>0.0.0</version>
-  <description>Stand go2</description>
-  <maintainer email="unitree@unitree.com">unitree</maintainer>
+  <description>Start naive implementation of a kick</description>
+  <maintainer email="mario.l.a3094@gmail.com">Choped7626</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

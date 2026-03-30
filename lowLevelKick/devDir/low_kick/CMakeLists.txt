@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(stand_go2)
+project(low_kick)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -33,13 +33,13 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 
-add_executable(stand_go2 src/stand_go2.cpp src/motor_crc.cpp)
+add_executable(low_kick src/low_kick.cpp src/motor_crc.cpp)
 
-ament_target_dependencies(stand_go2 ${DEPENDENCY_LIST})
+ament_target_dependencies(low_kick ${DEPENDENCY_LIST})
 
 
 install(TARGETS 
-        stand_go2
+        low_kick
         ${PROJECT_NAME})
 
 
