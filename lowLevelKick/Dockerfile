@@ -78,14 +78,14 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
     cd /tmp/unitree_sdk2_python && \
-#    git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
+    git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
     pip3 install . && \
     cd / && rm -rf /tmp/unitree_sdk2_python
 
 # 3. Instalar unitree_sdk2
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_sdk2 && \
     cd /tmp/unitree_sdk2 && \
-#    git checkout 811bc77cdcffb4691d4b40172f9a57857bf6cffb && \
+    git checkout 74e915b630758fe763f089528c3ff42d4396982e && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/opt/unitree_robotics && \
     make install && \
@@ -94,8 +94,8 @@ RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_s
 RUN source /opt/ros/humble/setup.bash && \
     git clone https://github.com/unitreerobotics/unitree_ros2.git /root/unitree_ros2 && \
     cd /root/unitree_ros2 && \
-#    git checkout 66ae09858245ac3d2231c0cc209e36a88f8d7d03 && \
-#    git submodule update --init --recursive && \
+    git checkout 66ae09858245ac3d2231c0cc209e36a88f8d7d03 && \
+    git submodule update --init --recursive && \
     cd cyclonedds_ws && colcon build
 
 # Reemplazar foxy por humble en los scripts de setup de unitree_ros2
@@ -115,7 +115,7 @@ RUN mkdir -p /root/.mujoco && \
 ARG MUJOCO_VERSION=3.3.6
 RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/unitree_mujoco && \
     cd /ros2_ws/unitree_mujoco && \
- #   git checkout 1a37b051a10be723405b7ed6dc839361af036d88 && \
+    git checkout 1a37b051a10be723405b7ed6dc839361af036d88 && \
     cd simulate && \
     ln -s /root/.mujoco/mujoco-${MUJOCO_VERSION} mujoco && \
     mkdir build && cd build && \
