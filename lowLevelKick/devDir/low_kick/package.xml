@@ -2,7 +2,7 @@
 <package format="3">
   <name>low_kick</name>
   <version>0.0.0</version>
-  <description>Start naive implementation of a kick</description>
+  <description>First naive implementation of a kick</description>
   <maintainer email="mario.l.a3094@gmail.com">Choped7626</maintainer>
   <license>TODO: License declaration</license>
 
