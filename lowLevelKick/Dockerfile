@@ -75,8 +75,8 @@ RUN pip3 install --no-cache-dir \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
+# NO VA, meterlo en root y no borrar , pip -e? --- ademais hai un clone q non funciona nin pa tras (buscar cal é e metelo desde local porq paso)
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \  
     cd /tmp/unitree_sdk2_python && \
     git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
     pip3 install . && \
