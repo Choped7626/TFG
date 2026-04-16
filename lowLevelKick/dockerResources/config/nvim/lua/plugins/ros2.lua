@@ -8,7 +8,7 @@ return {
 		build = ":TSUpdate",
 	},
 	{
-		dir = "/ros2_ws/nvim-ros2",
+		dir = "/root/nvim-ros2",
 		dependencies = {
 			"nvim-telescope/telescope.nvim",
 			"nvim-treesitter/nvim-treesitter",

@@ -76,31 +76,32 @@ COPY dockerResources/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # NO VA, meterlo en root y no borrar , pip -e? --- ademais hai un clone q non funciona nin pa tras (buscar cal é e metelo desde local porq paso)
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /ros2_ws/unitree_sdk2_python && \
-    cd /ros2_ws/unitree_sdk2_python && \
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
+    cd /tmp/unitree_sdk2_python && \
     git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
-    pip3 install -e .
+    pip3 install . && \
+    cd / && rm -rf /tmp/unitree_sdk2_python
 
 # 3. Instalar unitree_sdk2
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /ros2_ws/unitree_sdk2 && \
-    cd /ros2_ws/unitree_sdk2 && \
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_sdk2 && \
+    cd /tmp/unitree_sdk2 && \
     git checkout 74e915b630758fe763f089528c3ff42d4396982e && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/opt/unitree_robotics && \
     make install && \
-    rm -rf /ros2_ws/unitree_sdk2
+    rm -rf /tmp/unitree_sdk2
 
 RUN source /opt/ros/humble/setup.bash && \
-    git clone https://github.com/unitreerobotics/unitree_ros2.git /ros2_ws/unitree_ros2 && \
-    cd /ros2_ws/unitree_ros2 && \
+    git clone https://github.com/unitreerobotics/unitree_ros2.git /root/unitree_ros2 && \
+    cd /root/unitree_ros2 && \
     git checkout 66ae09858245ac3d2231c0cc209e36a88f8d7d03 && \
     git submodule update --init --recursive && \
     cd cyclonedds_ws && colcon build
 
 # Reemplazar foxy por humble en los scripts de setup de unitree_ros2
-RUN sed -i 's/opt\/ros\/foxy/opt\/ros\/humble/g' /ros2_ws/unitree_ros2/setup.sh \
-    /ros2_ws/unitree_ros2/setup_local.sh \
-    /ros2_ws/unitree_ros2/setup_default.sh
+RUN sed -i 's/opt\/ros\/foxy/opt\/ros\/humble/g' /root/unitree_ros2/setup.sh \
+    /root/unitree_ros2/setup_local.sh \
+    /root/unitree_ros2/setup_default.sh
 
 # 4. Descargar e instalar MuJoCo
 ARG MUJOCO_VERSION=3.3.6
@@ -120,11 +121,8 @@ RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/uni
     mkdir build && cd build && \
     cmake .. && make -j4
 
-# soluciona problema de script? ---> creo q no borrar?
-ENV LD_LIBRARY_PATH=/root/.mujoco/lib:$LD_LIBRARY_PATH
-
 RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc && \
-    echo 'source /ros2_ws/unitree_ros2/cyclonedds_ws/install/setup.bash' >> /root/.bashrc
+    echo 'source /root/unitree_ros2/cyclonedds_ws/install/setup.bash' >> /root/.bashrc
 
 COPY dockerResources/scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/build.sh \
@@ -136,7 +134,7 @@ RUN curl -LO https://github.com/neovim/neovim/releases/download/v0.11.7/nvim-lin
     ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim && \
     rm nvim-linux-x86_64.tar.gz
 
-RUN git clone https://github.com/erickkramer/nvim-ros2.git /ros2_ws/nvim-ros2
+RUN git clone https://github.com/erickkramer/nvim-ros2.git /root/nvim-ros2
 
 COPY dockerResources/config/nvim/ /root/.config/nvim/
 
