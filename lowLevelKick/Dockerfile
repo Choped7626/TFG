@@ -76,20 +76,19 @@ COPY dockerResources/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # NO VA, meterlo en root y no borrar , pip -e? --- ademais hai un clone q non funciona nin pa tras (buscar cal é e metelo desde local porq paso)
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /tmp/unitree_sdk2_python && \
-    cd /tmp/unitree_sdk2_python && \
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git /root/unitree_sdk2_python && \
+    cd /root/unitree_sdk2_python && \
     git checkout ab0d8ae2fee8e3ec337ba941d5e7fd49de5fd30a && \
-    pip3 install . && \
-    cd / && rm -rf /tmp/unitree_sdk2_python
+    pip3 install -e .
 
 # 3. Instalar unitree_sdk2
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /tmp/unitree_sdk2 && \
-    cd /tmp/unitree_sdk2 && \
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git /ros2_ws/unitree_sdk2 && \
+    cd /ros2_ws/unitree_sdk2 && \
     git checkout 74e915b630758fe763f089528c3ff42d4396982e && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/opt/unitree_robotics && \
     make install && \
-    rm -rf /tmp/unitree_sdk2
+    rm -rf /ros2_ws/unitree_sdk2
 
 RUN source /opt/ros/humble/setup.bash && \
     git clone https://github.com/unitreerobotics/unitree_ros2.git /root/unitree_ros2 && \
