@@ -12,8 +12,13 @@ usage() {
   exit 0
 }
 
-# Detectar nombre del paquete desde el directorio actual
-PACKAGE=$(basename "$PWD")
+# Detectar nombre del paquete desde el package.xml
+if [ -f "package.xml" ]; then
+  PACKAGE=$(grep -oP '(?<=<name>).*?(?=</name>)' package.xml)
+else
+  echo "[ERROR] No se encontró package.xml en el directorio actual."
+  exit 1
+fi
 
 MODE=""
 INTERFACE=""
