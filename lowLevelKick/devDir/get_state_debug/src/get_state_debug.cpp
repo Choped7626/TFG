@@ -8,9 +8,12 @@
 #include "unitree_go/msg/low_cmd.hpp"
 #include "unitree_go/msg/motor_cmd.hpp"
 
+#include "unitree/robot/channel/channel_factory.hpp"
+
 #include "unitree/robot/go2/robot_state/robot_state_client.hpp"
 
 #include "unitree_go/msg/low_state.hpp"
+#include <cstdio>
 #include <thread>
 
 // Create a low_level_cmd_sender class for low state receive
@@ -18,7 +21,7 @@ class low_level_cmd_sender : public rclcpp::Node {
 public:
   low_level_cmd_sender() : Node("low_level_cmd_sender") {
 
-    init_robot_state();
+    // init_robot_state();
 
     state_suber = this->create_subscription<unitree_go::msg::LowState>(
         "/lowstate", 10,
@@ -37,6 +40,8 @@ public:
   }
 
 private:
+  /*
+
   void init_robot_state() {
     client.SetTimeout(5.0f);
     client.Init();
@@ -71,6 +76,8 @@ private:
     }
   }
 
+  */
+
   void lowstate_callback(const unitree_go::msg::LowState::SharedPtr msg) {
     low_state = *msg;
 
@@ -82,6 +89,9 @@ private:
       RCLCPP_INFO(
           this->get_logger(),
           "Posición inicial capturada con éxito. Iniciando movimiento...");
+      for (int i = 0; i < 12; i++) {
+        printf("i = %d joint = %lf \n", i, initial_joint_pos[i]);
+      }
     }
   }
 
@@ -91,6 +101,8 @@ private:
       return;
 
     runing_time += dt;
+    /*
+
     if (runing_time < 3.0) {
       // Stand up in first 3 second
 
@@ -117,6 +129,8 @@ private:
       }
     }
 
+    */
+
     get_crc(low_cmd);            // Check motor cmd crc
     cmd_puber->publish(low_cmd); // Publish lowcmd message
   }
@@ -133,8 +147,8 @@ private:
     }
   }
 
-  std::vector<std::string> active_motion_services;
-  unitree::robot::go2::RobotStateClient client;
+  // std::vector<std::string> active_motion_services;
+  // unitree::robot::go2::RobotStateClient client;
 
   rclcpp::TimerBase::SharedPtr timer_; // ROS2 timer
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr
@@ -155,18 +169,68 @@ private:
   bool first_run = true;
 };
 
+void init_robot_state() {
+
+  printf("ESTOY VIVO\n");
+
+  std::vector<std::string> active_motion_services;
+  unitree::robot::go2::RobotStateClient client;
+  client.SetTimeout(5.0f);
+  client.Init();
+
+  std::vector<unitree::robot::go2::ServiceState> serviceList;
+  int32_t ret = client.ServiceList(serviceList);
+
+  if (ret != 0) {
+    // RCLCPP_ERROR(this->get_logger(), "Error al obtener servicios: %d", ret);
+    return;
+  }
+
+  std::cout << "\n--- LISTA DE SERVICIOS DETECTADOS ---" << std::endl;
+  printf("%-30s %-10s %-10s\n", "Nombre", "Status", "Protect");
+
+  for (const auto &svc : serviceList) {
+    printf("%-30s %-10d %-10d\n", svc.name.c_str(), svc.status, svc.protect);
+
+    bool is_motion_service = (svc.name == "mcf" || svc.name == "sport_mode");
+    if (is_motion_service && svc.status == 1 && svc.protect == 0) {
+      active_motion_services.push_back(svc.name);
+      // RCLCPP_INFO(this->get_logger(),
+      //             "Servicio de movimiento activo guardado: %s",
+      //             svc.name.c_str());
+    }
+  }
+  std::cout << "-------------------------------------\n" << std::endl;
+
+  if (active_motion_services.empty()) {
+    // RCLCPP_WARN(this->get_logger(),
+    //             "No se detectó ningún servicio de movimiento activo.");
+  }
+}
+
 int main(int argc, char **argv) {
   std::cout << "Press enter to start";
   std::cin.get();
 
-  rclcpp::init(argc, argv); // Initialize rclcpp
-  rclcpp::TimerBase::SharedPtr
-      timer_; // Create a timer callback object to send cmd in time intervals
-  auto node =
-      std::make_shared<low_level_cmd_sender>(); // Create a ROS2 node and make
-                                                // share with
-                                                // low_level_cmd_sender class
-  rclcpp::spin(node);                           // Run ROS2 node
-  rclcpp::shutdown();                           // Exit
+  // rclcpp::init(argc, argv); // Initialize rclcpp
+
+  if (argc > 1) {
+    printf("%s\n", argv[1]);
+    unitree::robot::ChannelFactory::Instance()->Init(0, argv[1]);
+  } else {
+    unitree::robot::ChannelFactory::Instance()->Init(0); // usa entorno
+  }
+
+  init_robot_state();
+
+  // rclcpp::TimerBase::SharedPtr
+  //     timer_; // Create a timer callback object to send cmd in time intervals
+  // auto node =
+  //     std::make_shared<low_level_cmd_sender>(); // Create a ROS2 node and
+  //     make
+  //  share with
+  //  low_level_cmd_sender class
+  // rclcpp::spin(node);                           // Run ROS2 node
+  // rclcpp::shutdown();                           // Exit
   return 0;
 }

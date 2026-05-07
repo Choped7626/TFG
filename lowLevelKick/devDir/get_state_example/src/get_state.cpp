@@ -185,7 +185,7 @@ private:
       // Total time for standing up or standing down is about 1.2s
       phase = tanh(runing_time / 1.2);
       for (int i = 0; i < 12; i++) {
-        printf("Joint: %d ===> %lf", i,
+        printf("Joint: %d ===> %lf\n", i,
                phase * stand_up_joint_pos[i] +
                    (1 - phase) * initial_joint_pos[i]);
         // low_cmd.motor_cmd[i].q =
@@ -200,7 +200,7 @@ private:
       // Then stand down
       phase = tanh((runing_time - 3.0) / 1.2);
       for (int i = 0; i < 12; i++) {
-        printf("Joint: %d ===> %lf", i,
+        printf("Joint: %d ===> %lf\n", i,
                phase * initial_joint_pos[i] +
                    (1 - phase) * stand_up_joint_pos[i]);
         // low_cmd.motor_cmd[i].q =
@@ -240,9 +240,9 @@ int main(int argc, char **argv) {
   std::cin.get();
 
   if (argc > 1) {
-    // unitree::robot::ChannelFactory::Instance()->Init(0, argv[1]);
+    unitree::robot::ChannelFactory::Instance()->Init(1, argv[1]);
   } else {
-    // unitree::robot::ChannelFactory::Instance()->Init(0);  // usa entorno
+    unitree::robot::ChannelFactory::Instance()->Init(1); // usa entorno
   }
 
   rclcpp::init(argc, argv);

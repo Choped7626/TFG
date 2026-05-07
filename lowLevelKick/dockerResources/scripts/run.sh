@@ -62,4 +62,4 @@ else
   export ROS_DOMAIN_ID=0
 fi
 
-./install/${PACKAGE}/bin/${PACKAGE}
+./install/${PACKAGE}/bin/${PACKAGE} $INTERFACE

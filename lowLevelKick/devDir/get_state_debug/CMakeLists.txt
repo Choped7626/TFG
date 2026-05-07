@@ -63,4 +63,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+target_compile_options(get_state_debug PRIVATE -fsanitize=address -g)
+target_link_options(get_state_debug PRIVATE -fsanitize=address)
+
 ament_package()

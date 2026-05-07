@@ -1,0 +1,4 @@
+#! /bin/bash
+
+export LD_LIBRARY_PATH=/ros2_ws/devDir/unitree_sdk2/thirdparty/lib/x86_64:$LD_LIBRARY_PATH
+source install/setup.bash
