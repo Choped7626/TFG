@@ -35,11 +35,13 @@ private:
   enum class State {
     IDLE,
     STAND_UP,
-    COME_BACK_UP,
-    ADJUST_REAR,
     STABLE_FR_IN_AIR,
     STAND_DOWN,
     WAIT,
+    SETUP_REAR,
+    SETUP_FRONT,
+    KICKING_GO,
+    KICKING_PREPARE,
   };
 
   State current_state = State::STAND_UP;
@@ -77,6 +79,63 @@ private:
       0.0473455, 1.22187, -2.44375, -0.0473455, 1.22187, -2.44375,
       0.0473455, 1.22187, -2.44375, -0.0473455, 1.22187, -2.44375};
 
+  double experimental_kick_joint_pos[12] = {
+      // FR
+      0.0473455,
+      1.22187,
+      -2.44375,
+      // FL
+      -0.1971,
+      0.5587,
+      -0.9260,
+      // RR
+      -0.2305,
+      0.886,
+      -1.6125,
+      // RL
+      -0.20427,
+      0.965,
+      -1.83890,
+  };
+
+  double kicking_prepare_joint_pos[12] = {
+      // FR
+      -0.25,
+      1.5,
+      -0.0,
+      // FL
+      -0.1971,
+      0.5587,
+      -0.9260,
+      // RR
+      -0.2305,
+      0.886,
+      -1.6125,
+      // RL
+      -0.20427,
+      0.965,
+      -1.83890,
+  };
+
+  double kicking_go_joint_pos[12] = {
+      // FR
+      -0.25,
+      -1.5,
+      -0.8,
+      // FL
+      -0.1971,
+      0.5587,
+      -0.9260,
+      // RR
+      -0.2305,
+      0.886,
+      -1.6125,
+      // RL
+      -0.20427,
+      0.965,
+      -1.83890,
+  };
+
   double stable_kick_joint_pos[12] = {
       // FR
       0.058142,
@@ -94,25 +153,6 @@ private:
       -0.20427,
       0.965,
       -1.83890,
-  };
-
-  double adjust_rear_joint_pos[12] = {
-      // FR
-      -0.10,
-      0.6,
-      -1.45,
-      // FL
-      -0.10,
-      0.53,
-      -1.45,
-      // RR
-      -0.2,
-      0.5,
-      -1.37,
-      // RL
-      -0.18,
-      0.56,
-      -1.5,
   };
 
   //
@@ -149,6 +189,42 @@ private:
     }
   }
 
+  void change_joints_rear(double joint_arr_dest[12], double joint_arr_org[12],
+                     double phase) {
+    for (int i = 6; i < 12; i++) {
+      low_cmd.motor_cmd[i].q =
+          phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
+      low_cmd.motor_cmd[i].dq = 0;
+      low_cmd.motor_cmd[i].kp = phase * 60.0 + (1 - phase) * 20.0;
+      low_cmd.motor_cmd[i].kd = 5;
+      low_cmd.motor_cmd[i].tau = 0;
+    }
+  }
+
+void change_joints_front(double joint_arr_dest[12], double joint_arr_org[12],
+                     double phase) {
+    for (int i = 0; i < 6; i++) {
+      low_cmd.motor_cmd[i].q =
+          phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
+      low_cmd.motor_cmd[i].dq = 0;
+      low_cmd.motor_cmd[i].kp = phase * 60.0 + (1 - phase) * 20.0;
+      low_cmd.motor_cmd[i].kd = 5;
+      low_cmd.motor_cmd[i].tau = 0;
+    }
+  }
+
+void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
+                     double phase) {
+    for (int i = 1; i < 2; i++) {
+      low_cmd.motor_cmd[i].q =
+          phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
+      low_cmd.motor_cmd[i].dq = 0;
+      low_cmd.motor_cmd[i].kp = phase * 60.0 + (1 - phase) * 20.0;
+      low_cmd.motor_cmd[i].kd = 5;
+      low_cmd.motor_cmd[i].tau = 0;
+    }
+  }
+
   void timer_callback() {
 
     runing_time += dt;
@@ -163,20 +239,59 @@ private:
       change_joints(stand_up_joint_pos, stand_down_joint_pos, phase);
 
       if (state_time >= duration) {
-        current_state = State::STABLE_FR_IN_AIR;
+        current_state = State::SETUP_REAR;
         state_start_time = runing_time;
       }
       break;
     }
 
-    case State::ADJUST_REAR: {
+    case State::SETUP_REAR: {
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints(adjust_rear_joint_pos, stand_up_joint_pos, phase);
+      change_joints_rear(experimental_kick_joint_pos, stand_up_joint_pos, phase);
 
       if (state_time >= duration) {
-        current_state = State::STABLE_FR_IN_AIR;
+        current_state = State::SETUP_FRONT;
+        state_start_time = runing_time;
+      }
+      break;
+    }
+
+    case State::SETUP_FRONT: {
+      double duration = 3.0;
+      phase = tanh(state_time / 1.2);
+
+      change_joints_front(experimental_kick_joint_pos, stand_up_joint_pos, phase);
+
+      if (state_time >= duration) {
+        current_state = State::KICKING_PREPARE;
+        state_start_time = runing_time;
+      }
+      break;
+    }
+
+    case State::KICKING_PREPARE: {
+      double duration = 3.0;
+      phase = tanh(state_time / 1.2);
+
+      change_joints_front(kicking_prepare_joint_pos, experimental_kick_joint_pos, phase);
+
+      if (state_time >= duration) {
+        current_state = State::KICKING_GO;
+        state_start_time = runing_time;
+      }
+      break;
+    }
+
+    case State::KICKING_GO: {
+      double duration = 3.0;
+      phase = tanh(state_time / 1.2);
+
+      change_joints_kick(kicking_go_joint_pos, experimental_kick_joint_pos, phase);
+
+      if (state_time >= duration) {
+        current_state = State::IDLE;
         state_start_time = runing_time;
       }
       break;
@@ -189,7 +304,7 @@ private:
       change_joints(stable_kick_joint_pos, stand_up_joint_pos, phase);
 
       if (state_time >= duration) {
-        current_state = State::WAIT;
+        current_state = State::IDLE;
         state_start_time = runing_time;
       }
       break;
@@ -202,7 +317,7 @@ private:
       printf("WAIT %f\n", state_time);
 
       if (state_time >= duration){
-        current_state = State::COME_BACK_UP;
+        current_state = State::IDLE;
 	state_start_time = runing_time;
       }
       break;
@@ -224,19 +339,6 @@ private:
     case State::IDLE: {
       // do nothing, last position
       printf("IDLE\n");
-      break;
-    }
-
-    case State::COME_BACK_UP: {
-      double duration = 3.0;
-      phase = tanh(state_time / 1.2);
-
-      change_joints(stand_up_joint_pos, stable_kick_joint_pos, phase);
-
-      if (state_time >= duration) {
-        current_state = State::IDLE;
-        state_start_time = runing_time;
-      }
       break;
     }
 
