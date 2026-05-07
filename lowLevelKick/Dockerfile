@@ -120,8 +120,12 @@ RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git /ros2_ws/uni
     mkdir build && cd build && \
     cmake .. && make -j4
 
+ENV LD_LIBRARY_PATH=/opt/unitree_robotics/lib:${LD_LIBRARY_PATH}
+
 RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc && \
     echo 'source /root/unitree_ros2/cyclonedds_ws/install/setup.bash' >> /root/.bashrc
+
+COPY dockerResources/go2/ /ros2_ws/unitree_mujoco/unitree_robots/go2/
 
 COPY dockerResources/scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/build.sh \
