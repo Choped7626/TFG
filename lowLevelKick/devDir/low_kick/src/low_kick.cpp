@@ -37,11 +37,13 @@ private:
     STAND_UP,
     STABLE_FR_IN_AIR,
     STAND_DOWN,
+    FINAL_POSITION,
     WAIT,
     SETUP_REAR,
     SETUP_FRONT,
     KICKING_GO,
     KICKING_PREPARE,
+    LEFT_AS_IT_WAS,
   };
 
   State current_state = State::STAND_UP;
@@ -49,6 +51,9 @@ private:
   double dt = 0.002;
   double runing_time = 0.0;
   double phase = 0.0;
+
+  int next = 0;
+  int log = 0;
 
   rclcpp::TimerBase::SharedPtr timer_; // ROS2 timer
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr
@@ -79,6 +84,10 @@ private:
       0.0473455, 1.22187, -2.44375, -0.0473455, 1.22187, -2.44375,
       0.0473455, 1.22187, -2.44375, -0.0473455, 1.22187, -2.44375};
 
+  double initial_joint_pos[12] = {0.0473455, 1.22187,    -2.44375,  -0.0473455,
+                                  1.22187,   -2.44375,   0.0473455, 1.22187,
+                                  -2.44375,  -0.0473455, 1.22187,   -2.44375};
+
   double experimental_kick_joint_pos[12] = {
       // FR
       0.0473455,
@@ -98,11 +107,30 @@ private:
       -1.83890,
   };
 
+  double estiralapata[12] = {
+      // FR
+      0.00571868,
+      0.608813,
+      -1.21763,
+      // FL
+      -0.1971,
+      0.5587,
+      -0.9260,
+      // RR
+      -0.2305,
+      0.886,
+      -1.6125,
+      // RL
+      -0.20427,
+      0.965,
+      -1.83890,
+  };
+
   double kicking_prepare_joint_pos[12] = {
       // FR
       -0.25,
       1.5,
-      -0.0,
+      -1.1,
       // FL
       -0.1971,
       0.5587,
@@ -121,7 +149,7 @@ private:
       // FR
       -0.25,
       -1.5,
-      -0.8,
+      -1.1,
       // FL
       -0.1971,
       0.5587,
@@ -190,7 +218,7 @@ private:
   }
 
   void change_joints_rear(double joint_arr_dest[12], double joint_arr_org[12],
-                     double phase) {
+                          double phase) {
     for (int i = 6; i < 12; i++) {
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
@@ -201,8 +229,8 @@ private:
     }
   }
 
-void change_joints_front(double joint_arr_dest[12], double joint_arr_org[12],
-                     double phase) {
+  void change_joints_front(double joint_arr_dest[12], double joint_arr_org[12],
+                           double phase) {
     for (int i = 0; i < 6; i++) {
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
@@ -213,9 +241,21 @@ void change_joints_front(double joint_arr_dest[12], double joint_arr_org[12],
     }
   }
 
-void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
-                     double phase) {
+  void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
+                          double phase) {
     for (int i = 1; i < 2; i++) {
+      low_cmd.motor_cmd[i].q =
+          phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
+      low_cmd.motor_cmd[i].dq = 0;
+      low_cmd.motor_cmd[i].kp = phase * 60.0 + (1 - phase) * 20.0;
+      low_cmd.motor_cmd[i].kd = 5;
+      low_cmd.motor_cmd[i].tau = 0;
+    }
+  }
+
+  void change_joints_FR(double joint_arr_dest[12], double joint_arr_org[12],
+                        double phase) {
+    for (int i = 0; i < 3; i++) {
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -227,6 +267,11 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
 
   void timer_callback() {
 
+    // if (!safe_to_move)
+    //   return;
+    // if (first_run || end)
+    //   return;
+
     runing_time += dt;
     double state_time = runing_time - state_start_time;
 
@@ -236,10 +281,30 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints(stand_up_joint_pos, stand_down_joint_pos, phase);
+      if (next) {
+        if (log == 6) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Estirando/Bajando pata FR para "
+                      "gracefully down/recuperar equilibro");
+          log++;
+        }
+        change_joints_FR(estiralapata, experimental_kick_joint_pos, phase);
+      } else {
+        if (log == 0) {
+          RCLCPP_INFO(
+              this->get_logger(),
+              "Levantando robot desde posicion inicial a posicion stand_up");
+          log++;
+        }
+        change_joints(stand_up_joint_pos, initial_joint_pos, phase);
+      }
 
       if (state_time >= duration) {
-        current_state = State::SETUP_REAR;
+        if (next) {
+          current_state = State::STAND_DOWN;
+        } else {
+          current_state = State::SETUP_REAR;
+        }
         state_start_time = runing_time;
       }
       break;
@@ -249,7 +314,13 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints_rear(experimental_kick_joint_pos, stand_up_joint_pos, phase);
+      if (log == 1) {
+        RCLCPP_INFO(this->get_logger(),
+                    "Colocando parte trasera del robot en posicion estable");
+        log++;
+      }
+      change_joints_rear(experimental_kick_joint_pos, stand_up_joint_pos,
+                         phase);
 
       if (state_time >= duration) {
         current_state = State::SETUP_FRONT;
@@ -262,10 +333,31 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints_front(experimental_kick_joint_pos, stand_up_joint_pos, phase);
+      if (next) {
+        if (log == 5) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Recolocando parte delantera para poder bajar la pata");
+          log++;
+        }
+        change_joints_front(experimental_kick_joint_pos, kicking_go_joint_pos,
+                            phase);
+      } else {
+        if (log == 2) {
+          RCLCPP_INFO(
+              this->get_logger(),
+              "Colocando parte delantera del robot en posicion estable");
+          log++;
+        }
+        change_joints_front(experimental_kick_joint_pos, stand_up_joint_pos,
+                            phase);
+      }
 
       if (state_time >= duration) {
-        current_state = State::KICKING_PREPARE;
+        if (next) {
+          current_state = State::STAND_UP;
+        } else {
+          current_state = State::KICKING_PREPARE;
+        }
         state_start_time = runing_time;
       }
       break;
@@ -275,7 +367,12 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints_front(kicking_prepare_joint_pos, experimental_kick_joint_pos, phase);
+      if (log == 3) {
+        RCLCPP_INFO(this->get_logger(), "Preparando accion de patada");
+        log++;
+      }
+      change_joints_front(kicking_prepare_joint_pos,
+                          experimental_kick_joint_pos, phase);
 
       if (state_time >= duration) {
         current_state = State::KICKING_GO;
@@ -288,20 +385,50 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 3.0;
       phase = tanh(state_time / 1.2);
 
-      change_joints_kick(kicking_go_joint_pos, experimental_kick_joint_pos, phase);
+      if (log == 4) {
+        RCLCPP_INFO(this->get_logger(), "Ejecutando patada");
+        log++;
+      }
+      change_joints_kick(kicking_go_joint_pos, experimental_kick_joint_pos,
+                         phase);
+      next++;
 
       if (state_time >= duration) {
-        current_state = State::IDLE;
+        current_state = State::SETUP_FRONT;
         state_start_time = runing_time;
       }
       break;
     }
 
-    case State::STABLE_FR_IN_AIR: {
+    case State::STAND_DOWN: {
+      double duration = 3.0;
+      phase = tanh(state_time / 1.2);
+
+      if (log == 7) {
+        RCLCPP_INFO(this->get_logger(), "Bajando a posicion stand_down desde "
+                                        "estado semi-stand_up (pata estirada)");
+        log++;
+      }
+
+      change_joints(stand_down_joint_pos, estiralapata, phase);
+
+      if (state_time >= duration) {
+        current_state = State::FINAL_POSITION;
+        state_start_time = runing_time;
+      }
+      break;
+    }
+
+    case State::FINAL_POSITION: {
       double duration = 4.0;
       double phase = tanh(state_time / 1.8);
 
-      change_joints(stable_kick_joint_pos, stand_up_joint_pos, phase);
+      if (log == 8) {
+        RCLCPP_INFO(this->get_logger(), "Volviendo abajo del todo");
+        log++;
+      }
+
+      change_joints(initial_joint_pos, stand_down_joint_pos, phase);
 
       if (state_time >= duration) {
         current_state = State::IDLE;
@@ -315,19 +442,6 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
       double duration = 5.0;
 
       printf("WAIT %f\n", state_time);
-
-      if (state_time >= duration){
-        current_state = State::IDLE;
-	state_start_time = runing_time;
-      }
-      break;
-    }
-
-    case State::STAND_DOWN: {
-      double duration = 3.0;
-      phase = tanh(state_time / 1.2);
-
-      change_joints(stand_down_joint_pos, stand_up_joint_pos, phase);
 
       if (state_time >= duration) {
         current_state = State::IDLE;
@@ -348,7 +462,164 @@ void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
 
     get_crc(low_cmd);            // Check motor cmd crc
     cmd_puber->publish(low_cmd); // Publish lowcmd message
+    if (current_state == State::IDLE) {
+      RCLCPP_INFO(this->get_logger(), "Comportamiento terminado");
+      // end = true;
+      // finish_sequence();
+    }
   }
+
+  /*
+
+    void timer_callback() {
+
+      runing_time += dt;
+      double state_time = runing_time - state_start_time;
+
+      switch (current_state) {
+
+      case State::STAND_UP: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        if (next) {
+          change_joints_FR(estiralapata, experimental_kick_joint_pos, phase);
+        } else {
+          change_joints(stand_up_joint_pos, initial_joint_pos, phase);
+        }
+
+        if (state_time >= duration) {
+          if (next) {
+            current_state = State::STAND_DOWN;
+          } else {
+            current_state = State::SETUP_REAR;
+          }
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::SETUP_REAR: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        change_joints_rear(experimental_kick_joint_pos, stand_up_joint_pos,
+                           phase);
+
+        if (state_time >= duration) {
+          current_state = State::SETUP_FRONT;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::SETUP_FRONT: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        if (next) {
+          change_joints_front(experimental_kick_joint_pos, kicking_go_joint_pos,
+                              phase);
+        } else {
+          change_joints_front(experimental_kick_joint_pos, stand_up_joint_pos,
+                              phase);
+        }
+
+        if (state_time >= duration) {
+          if (next) {
+            current_state = State::STAND_UP;
+          } else {
+            current_state = State::KICKING_PREPARE;
+          }
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::KICKING_PREPARE: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        change_joints_front(kicking_prepare_joint_pos,
+                            experimental_kick_joint_pos, phase);
+
+        if (state_time >= duration) {
+          current_state = State::KICKING_GO;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::KICKING_GO: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        change_joints_kick(kicking_go_joint_pos, experimental_kick_joint_pos,
+                           phase);
+        next++;
+
+        if (state_time >= duration) {
+          current_state = State::SETUP_FRONT;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::STAND_DOWN: {
+        double duration = 3.0;
+        phase = tanh(state_time / 1.2);
+
+        change_joints(stand_down_joint_pos, estiralapata, phase);
+
+        if (state_time >= duration) {
+          current_state = State::LEFT_AS_IT_WAS;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::LEFT_AS_IT_WAS: {
+        double duration = 4.0;
+        double phase = tanh(state_time / 1.8);
+
+        change_joints(initial_joint_pos, stand_down_joint_pos, phase);
+
+        if (state_time >= duration) {
+          current_state = State::IDLE;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::WAIT: {
+        // do nothing, last position
+        double duration = 5.0;
+
+        printf("WAIT %f\n", state_time);
+
+        if (state_time >= duration) {
+          current_state = State::IDLE;
+          state_start_time = runing_time;
+        }
+        break;
+      }
+
+      case State::IDLE: {
+        // do nothing, last position
+        printf("IDLE\n");
+        break;
+      }
+
+      default:
+        break;
+      }
+
+      get_crc(low_cmd);            // Check motor cmd crc
+      cmd_puber->publish(low_cmd); // Publish lowcmd message
+    }
+
+  */
+
   /*
     void timer_callback() {
 

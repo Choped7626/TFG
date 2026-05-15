@@ -19,30 +19,42 @@ public:
     state_pub_ = this->create_publisher<std_msgs::msg::String>(
         "/unitree/active_services", 10);
 
+    RCLCPP_INFO(this->get_logger(), "Publisher en /unitree/active_services");
+
     sport_mode_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/unitree/sport_mode",
         std::bind(&StateManagerNode::sport_mode_callback, this,
                   std::placeholders::_1, std::placeholders::_2));
+
+    RCLCPP_INFO(this->get_logger(), "Servicio en /unitree/sport_mode");
 
     damp_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/unitree/damp",
         std::bind(&StateManagerNode::damp_callback, this, std::placeholders::_1,
                   std::placeholders::_2));
 
+    RCLCPP_INFO(this->get_logger(), "Servicio en /unitree/damp");
+
     stand_up_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/unitree/stand_up",
         std::bind(&StateManagerNode::stand_up_callback, this,
                   std::placeholders::_1, std::placeholders::_2));
+
+    RCLCPP_INFO(this->get_logger(), "Servicio en /unitree/stand_up");
 
     stand_down_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/unitree/stand_down",
         std::bind(&StateManagerNode::stand_down_callback, this,
                   std::placeholders::_1, std::placeholders::_2));
 
+    RCLCPP_INFO(this->get_logger(), "Servicio en /unitree/stand_down");
+
     balance_stand_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/unitree/balance_stand",
         std::bind(&StateManagerNode::balance_stand_callback, this,
                   std::placeholders::_1, std::placeholders::_2));
+
+    RCLCPP_INFO(this->get_logger(), "Servicio en /unitree/balance_stand");
 
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(500),
@@ -82,13 +94,55 @@ private:
     return all_ok;
   }
 
+  /* 
+   
   void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr req,
                            std_srvs::srv::SetBool::Response::SharedPtr res) {
+    if (!req->data) {
+      // Antes de apagar: llevar robot a posición segura
+      RCLCPP_INFO(this->get_logger(), "Ejecutando StandDown previo...");
+      sport_client_.StandDown();
+      std::this_thread::sleep_for(std::chrono::seconds(2)); // deja que complete
 
-    bool ok = switch_all_motion_services(req->data);
-    res->success = ok;
-    res->message = ok ? "OK" : "Algún servicio falló, revisa logs";
+      bool ok = switch_all_motion_services(req->data);
+
+      // Polling: esperar hasta que ningún servicio esté activo
+      if (ok) {
+        for (int i = 0; i < 10; i++) {
+          std::vector<unitree::robot::go2::ServiceState> services;
+          client_.ServiceList(services);
+          bool any_active = false;
+          for (auto &s : services)
+            if (s.status == 1) {
+              any_active = true;
+              break;
+            }
+          if (!any_active)
+            break;
+          RCLCPP_INFO(this->get_logger(),
+                      "Esperando que servicios se apaguen...");
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+      }
+
+      res->success = ok;
+      res->message = ok ? "OK" : "Fallo";
+    } else {
+      bool ok = switch_all_motion_services(true);
+      res->success = ok;
+      res->message = ok ? "OK" : "Fallo";
+    }
   }
+
+  */
+
+    void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr
+    req, std_srvs::srv::SetBool::Response::SharedPtr res) {
+
+      bool ok = switch_all_motion_services(req->data);
+      res->success = ok;
+      res->message = ok ? "OK" : "Algún servicio falló, revisa logs";
+    }
 
   void damp_callback(const std_srvs::srv::SetBool::Request::SharedPtr req,
                      std_srvs::srv::SetBool::Response::SharedPtr res) {
@@ -157,8 +211,6 @@ private:
 
 void init_robot_state() {
 
-  printf("ESTOY VIVO\n");
-
   std::vector<std::string> active_motion_services;
   unitree::robot::go2::RobotStateClient client;
   client.SetTimeout(5.0f);
@@ -181,14 +233,16 @@ void init_robot_state() {
     bool is_motion_service = (svc.name == "mcf" || svc.name == "sport_mode");
     if (is_motion_service && svc.status == 1 && svc.protect == 0) {
       active_motion_services.push_back(svc.name);
+      printf("Servicio de movimiento activo guardado: %s", svc.name.c_str());
       // RCLCPP_INFO(this->get_logger(),
-      //             "Servicio de movimiento activo guardado: %s",
-      //             svc.name.c_str());
+      //              "Servicio de movimiento activo guardado: %s",
+      //              svc.name.c_str());
     }
   }
   std::cout << "-------------------------------------\n" << std::endl;
 
   if (active_motion_services.empty()) {
+    printf("No se detectó ningún servicio de movimiento activo.\n");
     // RCLCPP_WARN(this->get_logger(),
     //             "No se detectó ningún servicio de movimiento activo.");
   }
