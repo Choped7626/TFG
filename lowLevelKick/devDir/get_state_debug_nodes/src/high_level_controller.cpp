@@ -4,9 +4,10 @@
 #include "unitree/robot/channel/channel_factory.hpp"
 #include "unitree/robot/go2/robot_state/robot_state_client.hpp"
 #include "unitree/robot/go2/sport/sport_client.hpp"
+#include "unitree/robot/b2/motion_switcher/motion_switcher_client.hpp"
 
 // Servicios a apagar/encender junto con sport_mode
-static const std::vector<std::string> MOTION_SERVICES = {"advanced_sport"};
+static const std::vector<std::string> MOTION_SERVICES = {"sport_mode"};
 
 class StateManagerNode : public rclcpp::Node {
 public:
@@ -15,6 +16,8 @@ public:
     client_.Init();
     sport_client_.SetTimeout(10.0f);
     sport_client_.Init();
+
+    motion_switcher_client_.Init();
 
     state_pub_ = this->create_publisher<std_msgs::msg::String>(
         "/unitree/active_services", 10);
@@ -94,8 +97,8 @@ private:
     return all_ok;
   }
 
-  /* 
-   
+  /*
+
   void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr req,
                            std_srvs::srv::SetBool::Response::SharedPtr res) {
     if (!req->data) {
@@ -136,13 +139,79 @@ private:
 
   */
 
-    void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr
+  /*
+
+  void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr
     req, std_srvs::srv::SetBool::Response::SharedPtr res) {
 
-      bool ok = switch_all_motion_services(req->data);
-      res->success = ok;
-      res->message = ok ? "OK" : "Algún servicio falló, revisa logs";
+    bool ok = switch_all_motion_services(req->data);
+    res->success = ok;
+    res->message = ok ? "OK" : "Algún servicio falló, revisa logs";
+  }
+
+  */
+
+  void sport_mode_callback(const std_srvs::srv::SetBool::Request::SharedPtr req,
+                           std_srvs::srv::SetBool::Response::SharedPtr res) {
+
+    if (!req->data) {
+      RCLCPP_INFO(this->get_logger(), "Apagando sport_mode...");
+
+      sport_client_.StandDown();
+      std::this_thread::sleep_for(
+          std::chrono::seconds(5)); // Esperar a que termine de sentarse
+
+      int32_t status = 0;
+      int32_t ret = client_.ServiceSwitch("sport_mode", 0, status);
+
+      if (ret != 0) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Fallo al solicitar apagar sport_mode");
+        res->success = false;
+        res->message = "Error al apagar sport_mode";
+        return;
+      }
+
+      RCLCPP_INFO(this->get_logger(), "Liberando canales del Master Control Framework (MCF)...");
+      motion_switcher_client_.ReleaseMode();
+
+      bool switch_ok = false;
+
+      for (int i = 0; i < 10; i++) {
+        std::vector<unitree::robot::go2::ServiceState> services;
+        client_.ServiceList(services);
+
+        bool sport_still_active = false;
+        for (auto &s : services) {
+          if (s.name == "sport_mode" && s.status == 1) {
+            sport_still_active = true;
+            break;
+          }
+        }
+
+        if (!sport_still_active) {
+          switch_ok = true;
+          break;
+        }
+
+        RCLCPP_INFO(this->get_logger(),
+                    "Esperando que sport_mode se libere...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      }
+
+      res->success = switch_ok;
+      res->message = switch_ok ? "Bajo nivel desbloqueado. Sport_mode APAGADO."
+                               : "Timeout esperando apagado.";
+
+    } else {
+      int32_t status = 0;
+      int32_t ret = client_.ServiceSwitch("sport_mode", 1, status);
+
+      res->success = (ret == 0);
+      res->message = (ret == 0) ? "Sport_mode encendido con éxito."
+                                : "Fallo al encender sport_mode.";
     }
+  }
 
   void damp_callback(const std_srvs::srv::SetBool::Request::SharedPtr req,
                      std_srvs::srv::SetBool::Response::SharedPtr res) {
@@ -200,6 +269,7 @@ private:
 
   unitree::robot::go2::RobotStateClient client_;
   unitree::robot::go2::SportClient sport_client_;
+  unitree::robot::b2::MotionSwitcherClient motion_switcher_client_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr state_pub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr sport_mode_srv_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr damp_srv_;

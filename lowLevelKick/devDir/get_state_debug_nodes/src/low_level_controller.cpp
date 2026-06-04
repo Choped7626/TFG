@@ -321,6 +321,7 @@ private:
   void change_joints(double joint_arr_dest[12], double joint_arr_org[12],
                      double phase) {
     for (int i = 0; i < 12; i++) {
+      low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -333,6 +334,7 @@ private:
   void change_joints_rear(double joint_arr_dest[12], double joint_arr_org[12],
                           double phase) {
     for (int i = 6; i < 12; i++) {
+      low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -345,6 +347,7 @@ private:
   void change_joints_front(double joint_arr_dest[12], double joint_arr_org[12],
                            double phase) {
     for (int i = 0; i < 6; i++) {
+      low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -357,6 +360,7 @@ private:
   void change_joints_kick(double joint_arr_dest[12], double joint_arr_org[12],
                           double phase) {
     for (int i = 1; i < 2; i++) {
+      low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -369,6 +373,7 @@ private:
   void change_joints_FR(double joint_arr_dest[12], double joint_arr_org[12],
                         double phase) {
     for (int i = 0; i < 3; i++) {
+      low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q =
           phase * joint_arr_dest[i] + (1 - phase) * joint_arr_org[i];
       low_cmd.motor_cmd[i].dq = 0;
@@ -387,13 +392,43 @@ private:
         RCLCPP_INFO(this->get_logger(), "Bajado");
       }
 
-      RCLCPP_INFO(this->get_logger(), "Desactivando sport_mode...");
-      if (call_sport_mode(false)) {
-        safe_to_move = true;
-        RCLCPP_INFO(this->get_logger(), "Listo. Comenzando movimiento.");
-      }
+      std::this_thread::sleep_for(std::chrono::seconds(4));
 
       init_cmd();
+
+      RCLCPP_INFO(this->get_logger(),
+                  "Enviando orden de desactivación de sport_mode...");
+      call_sport_mode(false);
+
+      RCLCPP_INFO(
+          this->get_logger(),
+          "Verificando que Unitree apague el servicio sport_mode de verdad...");
+      bool verificado = false;
+
+      for (int i = 0; i < 20; i++) { // Intenta durante 10 segundos
+        // Comprobamos si la palabra "sport_mode" ya NO está en el string que
+        // publica el StateManager
+        if (!active_services_str.empty() &&
+            active_services_str.find("sport_mode") == std::string::npos) {
+          verificado = true;
+          break;
+        }
+        RCLCPP_INFO(this->get_logger(),
+                    "El robot sigue en High-Level... esperando...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      }
+
+      if (verificado) {
+        RCLCPP_INFO(this->get_logger(),
+                    "¡Confirmado! sport_mode desaparecido. Motores liberados.");
+        safe_to_move =
+            true; // Ahora sí es 100% seguro arrancar el timer de bajo nivel
+      } else {
+        RCLCPP_ERROR(this->get_logger(),
+                     "TIMEOUT: El robot se negó a apagar el sport_mode. "
+                     "Cancelando por seguridad.");
+        safe_to_move = false;
+      }
     }).detach();
   }
 
@@ -559,7 +594,10 @@ private:
         log++;
       }
 
-      change_joints(initial_joint_pos, stand_down_joint_pos, phase); // si esta de pie inicialmente vuelve a intentar estar de pie xd meter un array con valores para descansando
+      change_joints(
+          initial_joint_pos, stand_down_joint_pos,
+          phase); // si esta de pie inicialmente vuelve a intentar estar de pie
+                  // xd meter un array con valores para descansando
 
       if (state_time >= duration) {
         current_state = State::IDLE;
@@ -601,11 +639,26 @@ private:
   }
 
   void init_cmd() {
-    for (int i = 0; i < 20; i++) {
+
+    low_cmd.head[0] = 0xFE;
+    low_cmd.head[1] = 0xEF;
+    low_cmd.level_flag = 0xFF;
+    low_cmd.bandwidth = 0x01;
+
+    for (int i = 0; i < 12; i++) {
       low_cmd.motor_cmd[i].mode = 0x01;
       low_cmd.motor_cmd[i].q = PosStopF;
       low_cmd.motor_cmd[i].kp = 0;
       low_cmd.motor_cmd[i].dq = VelStopF;
+      low_cmd.motor_cmd[i].kd = 0;
+      low_cmd.motor_cmd[i].tau = 0;
+    }
+
+    for (int i = 12; i < 20; i++) {
+      low_cmd.motor_cmd[i].mode = 0x00;
+      low_cmd.motor_cmd[i].q = 0;
+      low_cmd.motor_cmd[i].kp = 0;
+      low_cmd.motor_cmd[i].dq = 0;
       low_cmd.motor_cmd[i].kd = 0;
       low_cmd.motor_cmd[i].tau = 0;
     }

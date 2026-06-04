@@ -1,0 +1,17 @@
+# Apagar motion_switch
+ros2 service call /unitree/ std_srvs/srv/SetBool "{data: false}"
+
+# Activar motion_switch
+ros2 service call /unitree/ std_srvs/srv/SetBool "{data: true}"
+
+# Damp
+ros2 service call /unitree/damp std_srvs/srv/SetBool "{data: true}"
+
+# StandUp
+ros2 service call /unitree/stand_up std_srvs/srv/SetBool "{data: true}"
+
+# StandDown
+ros2 service call /unitree/stand_down std_srvs/srv/SetBool "{data: true}"
+
+# BalanceStand
+ros2 service call /unitree/balance_stand std_srvs::srv::SetBool "{data: true}"
